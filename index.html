@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Touch Grass Trainer 🌿</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
+        #video { border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 15px; width: 90%; max-width: 400px; }
+        .controls { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        #btn-grass { background: #2ecc71; color: white; }
+        #btn-other { background: #e74c3c; color: white; }
+        button:active { transform: scale(0.95); }
+        #status { margin-top: 20px; font-size: 1.2rem; text-align: center; font-weight: bold; color: #34495e; }
+    </style>
+</head>
+<body>
+    <h1>Touch Grass Trainer 🌿</h1>
+    <video autoplay playsinline muted id="video"></video>
+    
+    <div class="controls">
+        <button id="btn-grass">🌿 ĐÂY LÀ CỎ</button>
+        <button id="btn-other">🚫 KHÔNG PHẢI CỎ</button>
+    </div>
+
+    <div id="status">Đang nạp bộ não AI...</div>
+
+    <script>
+        const video = document.getElementById('video');
+        const status = document.getElementById('status');
+        
+        // Khởi tạo bộ nhớ KNN và mô hình MobileNet
+        const classifier = knnClassifier.create();
+        let net;
+
+        async function setupCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
+                audio: false
+            });
+            video.srcObject = stream;
+        }
+
+        // Hàm "dạy" AI
+        async function addExample(classId) {
+            // Bước 1: Lấy đặc trưng ảnh từ MobileNet (như đôi mắt)
+            const activation = net.infer(video, true);
+            // Bước 2: Nạp vào bộ nhớ KNN (như trí nhớ)
+            classifier.addExample(activation, classId);
+            
+            const label = classId === 0 ? "CỎ" : "KHÁC";
+            status.innerText = `Đã học 1 mẫu cho nhóm: ${label}`;
+            status.style.color = classId === 0 ? "#2ecc71" : "#e74c3c";
+        }
+
+        async function predict() {
+            // Chỉ dự đoán khi đã được học ít nhất 1 mẫu
+            if (classifier.getNumClasses() > 0) {
+                const activation = net.infer(video, true);
+                const result = await classifier.predictClass(activation);
+                
+                const classes = ['🌿 BẠN ĐANG CHẠM CỎ!', '❌ ĐÂY KHÔNG PHẢI CỎ'];
+                const confidence = (result.confidences[result.label] * 100).toFixed(0);
+                
+                status.innerText = `${classes[result.label]} (${confidence}%)`;
+                status.style.color = result.label === 0 ? "#27ae60" : "#c0392b";
+            }
+            requestAnimationFrame(predict);
+        }
+
+        async function main() {
+            await setupCamera();
+            // Nạp MobileNet
+            net = await mobilenet.load();
+            status.innerText = "AI đã sẵn sàng! Hãy bắt đầu dạy nó.";
+
+            // Lắng nghe sự kiện bấm nút
+            document.getElementById('btn-grass').addEventListener('click', () => addExample(0));
+            document.getElementById('btn-other').addEventListener('click', () => addExample(1));
+
+            predict();
+        }
+
+        main();
+    </script>
+</body>
+</html>
