@@ -81,16 +81,37 @@
 
         // 5. Khởi chạy chính
         async function main() {
-            await setupCamera();
-            net = await mobilenet.load();
-            status.innerText = "Sẵn sàng! Hãy dạy AI hoặc nạp dữ liệu.";
+    await setupCamera();
+    status.innerText = "Đang nạp bộ não AI (MobileNet)...";
+    net = await mobilenet.load();
 
-            document.getElementById('btn-grass').addEventListener('click', () => addExample(0));
-            document.getElementById('btn-other').addEventListener('click', () => addExample(1));
-            document.getElementById('btn-save').addEventListener('click', saveDataset);
+    // 🚀 ĐOẠN NÀY LÀ ĐỂ ĐỌC FILE DATASET.JSON BẠN VỪA UPLOAD
+    try {
+        status.innerText = "Đang nạp dữ liệu từ file dataset.json...";
+        const response = await fetch('./dataset.json'); 
+        const datasetJson = await response.json();
+        
+        // Chuyển dữ liệu từ JSON ngược lại thành Tensor cho AI hiểu
+        const dataset = {};
+        Object.keys(datasetJson).forEach((key) => {
+            dataset[key] = tf.tensor2d(datasetJson[key], [datasetJson[key].length / 1024, 1024]);
+        });
+        
+        classifier.setClassifierDataset(dataset);
+        status.innerText = "✅ Đã nạp bộ não! Đưa cam ra soi cỏ ngay!";
+    } catch (err) {
+        // Nếu chưa có file hoặc lỗi, AI sẽ ở chế độ chờ bạn dạy
+        status.innerText = "⚠️ Chưa có dữ liệu. Hãy bấm nút để dạy AI!";
+        console.log("Không tìm thấy file dataset hoặc file lỗi:", err);
+    }
 
-            predict();
-        }
+    // Lắng nghe các nút bấm (để bạn vẫn có thể dạy thêm nếu muốn)
+    document.getElementById('btn-grass').addEventListener('click', () => addExample(0));
+    document.getElementById('btn-other').addEventListener('click', () => addExample(1));
+    document.getElementById('btn-save').addEventListener('click', saveDataset);
+
+    predict();
+}
 
         main();
     </script>
